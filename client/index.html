@@ -1,19 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OVERWATCH TACTICAL INTERFACE</title>
-    
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
-    
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap"
+        rel="stylesheet">
+
     <!-- Leaflet & Tailwind -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Socket.IO -->
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 
@@ -21,8 +25,8 @@
         :root {
             --neon-blue: #00f3ff;
             --neon-red: #ff0055;
+            --neon-green: #39ff14;
             --bg-dark: #0a0a0f;
-            --panel-bg: rgba(10, 10, 15, 0.85);
         }
 
         body {
@@ -30,9 +34,13 @@
             background-color: var(--bg-dark);
             color: #fff;
             overflow: hidden;
+            transition: filter 0.5s ease;
         }
 
-        h1, h2, h3, .cyber-text {
+        h1,
+        h2,
+        h3,
+        .cyber-text {
             font-family: 'Orbitron', sans-serif;
             letter-spacing: 2px;
         }
@@ -40,22 +48,35 @@
         /* Scanline Effect */
         .scanlines {
             position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: linear-gradient(
-                to bottom,
-                rgba(255,255,255,0),
-                rgba(255,255,255,0) 50%,
-                rgba(0,0,0,0.2) 50%,
-                rgba(0,0,0,0.2)
-            );
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to bottom,
+                    rgba(255, 255, 255, 0),
+                    rgba(255, 255, 255, 0) 50%,
+                    rgba(0, 0, 0, 0.2) 50%,
+                    rgba(0, 0, 0, 0.2));
             background-size: 100% 4px;
             pointer-events: none;
             z-index: 9999;
         }
 
         /* Map Dark Mode */
-        .leaflet-layer, .leaflet-control-zoom-in, .leaflet-control-zoom-out, .leaflet-control-attribution {
+        .leaflet-layer,
+        .leaflet-control-zoom-in,
+        .leaflet-control-zoom-out,
+        .leaflet-control-attribution {
             filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+        }
+
+        /* High Contrast Mode for Emergency */
+        body.emergency-mode .leaflet-layer {
+            filter: invert(100%) hue-rotate(90deg) brightness(120%) contrast(150%) !important;
+        }
+
+        body.emergency-mode {
+            filter: contrast(1.2) brightness(1.1);
         }
 
         /* Marker Pulse */
@@ -69,25 +90,82 @@
         }
 
         @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(255, 0, 85, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(255, 0, 85, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(255, 0, 85, 0); }
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 0, 85, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(255, 0, 85, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 0, 85, 0);
+            }
         }
 
         /* Custom Scrollbar */
         ::-webkit-scrollbar {
             width: 6px;
         }
+
         ::-webkit-scrollbar-track {
             background: #000;
         }
+
         ::-webkit-scrollbar-thumb {
             background: var(--neon-blue);
         }
+
+        /* Emergency Button */
+        #emergency-btn {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid var(--neon-red);
+            color: var(--neon-red);
+            padding: 15px 30px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 0 10px var(--neon-red);
+            transition: all 0.3s;
+        }
+
+        #emergency-btn:hover {
+            background: var(--neon-red);
+            color: #000;
+            box-shadow: 0 0 30px var(--neon-red);
+        }
+
+        /* Emergency Banner */
+        #emergency-banner {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: var(--neon-green);
+            color: #000;
+            padding: 10px 40px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            font-size: 24px;
+            z-index: 2000;
+            box-shadow: 0 0 20px var(--neon-green);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #emergency-banner.active {
+            transform: translateX(-50%) translateY(0);
+        }
     </style>
 </head>
+
 <body class="h-screen w-screen flex relative">
     <div class="scanlines"></div>
+    <div id="emergency-banner">TRAFFIC CONTROL ACTIVE</div>
 
     <!-- Sidebar -->
     <div class="w-96 h-full flex flex-col z-20 border-r border-[#00f3ff] bg-[rgba(10,10,15,0.9)] backdrop-blur-md">
@@ -95,7 +173,8 @@
             <h1 class="text-2xl font-bold text-[#00f3ff] drop-shadow-[0_0_5px_#00f3ff]">
                 OVERWATCH
             </h1>
-            <p class="text-xs text-gray-400 mt-1 cyber-text">SYSTEM STATUS: <span class="text-green-400 animate-pulse">ONLINE</span></p>
+            <p class="text-xs text-gray-400 mt-1 cyber-text">SYSTEM STATUS: <span
+                    class="text-green-400 animate-pulse">ONLINE</span></p>
         </div>
 
         <div id="feed" class="flex-1 overflow-y-auto p-4 space-y-4">
@@ -110,8 +189,12 @@
     <!-- Map -->
     <div id="map" class="flex-1 h-full z-10"></div>
 
+    <!-- Emergency Button -->
+    <button id="emergency-btn">EMERGENCY OVERRIDE</button>
+
     <!-- Script -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
         // 1. Initialize Map
         const map = L.map('map').setView([13.7563, 100.5018], 12);
@@ -123,6 +206,8 @@
         const socket = io('http://localhost:3001');
         const feed = document.getElementById('feed');
 
+        let lastIncidentLatLng = null;
+
         socket.on('connect', () => {
             console.log('Connected to Neural Link');
             addLog('SYSTEM', 'Neural Link Established', 'INFO');
@@ -131,21 +216,30 @@
         // 3. Event Listener
         socket.on('new_incident', (data) => {
             console.log('New Incident:', data);
-            
+
+            // Generate synthetic coords close to Bangkok center if not provided
+            // In Mission 7 simulation.js actually sends lat/lng, let's use them if available
+            // but the Service might not forward them yet if Entity doesn't have them.
+            // Wait, Incident Entity only has text, type, priority, createdAt.
+            // The simulation.js sends lat/lng but the Controller/DTO/Entity dropped them in Mission 4?
+            // Checking DTO... yes, CreateIncidentDto only has text.
+            // So we must simulate coords here on client as before.
+
+            const lat = 13.7563 + (Math.random() - 0.5) * 0.1;
+            const lng = 100.5018 + (Math.random() - 0.5) * 0.1;
+
+            lastIncidentLatLng = [lat, lng];
+
             // Add Marker
-            addMarker(data);
-            
+            addMarker(data, lat, lng);
+
             // Add to Sidebar
             addLog(data.type, data.text, data.priority);
         });
 
-        function addMarker(data) {
-            // Random jitter for simulation purpose since we don't have real lat/lng in backend yet
-            const lat = 13.7563 + (Math.random() - 0.5) * 0.1;
-            const lng = 100.5018 + (Math.random() - 0.5) * 0.1;
-
+        function addMarker(data, lat, lng) {
             let iconHtml = `<div style="background-color: #00f3ff; width: 12px; height: 12px; border-radius: 50%;"></div>`;
-            
+
             if (data.priority === 'HIGH') {
                 iconHtml = `<div class="pulse-marker"></div>`;
             }
@@ -163,13 +257,15 @@
                     <span style="color:#333">${data.text}</span>
                 `)
                 .openPopup();
+
+            map.flyTo([lat, lng], 13, { duration: 1.5 });
         }
 
         function addLog(type, text, priority) {
             const item = document.createElement('div');
             const borderColor = priority === 'HIGH' ? 'border-[#ff0055]' : 'border-[#00f3ff]';
             const textColor = priority === 'HIGH' ? 'text-[#ff0055]' : 'text-[#00f3ff]';
-            
+
             item.className = `bg-black/50 border-l-4 ${borderColor} p-3 mb-2 animate-in fade-in slide-in-from-left duration-500`;
             item.innerHTML = `
                 <div class="flex justify-between items-center mb-1">
@@ -179,9 +275,57 @@
                 <div class="text-sm text-gray-300 font-mono">${text}</div>
                 <div class="text-[10px] text-gray-600 mt-1">${new Date().toLocaleTimeString()}</div>
             `;
-            
+
             feed.prepend(item);
         }
+
+        // 4. Emergency Override Logic
+        const emergencyBtn = document.getElementById('emergency-btn');
+        const emergencyBanner = document.getElementById('emergency-banner');
+
+        emergencyBtn.addEventListener('click', () => {
+            if (!lastIncidentLatLng) {
+                alert('No active incidents to target!');
+                return;
+            }
+
+            // Siam Paragon Coords (Base)
+            const baseLatLng = [13.7469, 100.5349];
+
+            // 1. Draw Polyline (Green Neon)
+            const latlngs = [
+                baseLatLng,
+                lastIncidentLatLng
+            ];
+
+            const polyline = L.polyline(latlngs, {
+                color: '#39ff14', // Neon Green
+                weight: 5,
+                opacity: 0.8,
+                dashArray: '10, 10',
+                lineCap: 'round'
+            }).addTo(map);
+
+            // Zoom to fit
+            map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+
+            // 2. Show Banner
+            emergencyBanner.classList.add('active');
+
+            // 3. Visual High Contrast
+            document.body.classList.add('emergency-mode');
+
+            // Add Log
+            addLog('SYSTEM', 'EMERGENCY PROTOCOL ACTIVATED: REROUTING TRAFFIC', 'HIGH');
+
+            // Auto reset visual after 5 seconds (Output effect)
+            setTimeout(() => {
+                emergencyBanner.classList.remove('active');
+                document.body.classList.remove('emergency-mode');
+                map.removeLayer(polyline);
+            }, 10000);
+        });
     </script>
 </body>
+
 </html>
