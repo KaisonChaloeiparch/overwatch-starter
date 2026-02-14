@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OVERWATCH TACTICAL INTERFACE</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet & Tailwind -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-red: #ff0055;
+            --bg-dark: #0a0a0f;
+            --panel-bg: rgba(10, 10, 15, 0.85);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: #fff;
+            overflow: hidden;
+        }
+
+        h1, h2, h3, .cyber-text {
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 2px;
+        }
+
+        /* Scanline Effect */
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.2) 50%,
+                rgba(0,0,0,0.2)
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* Map Dark Mode */
+        .leaflet-layer, .leaflet-control-zoom-in, .leaflet-control-zoom-out, .leaflet-control-attribution {
+            filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+        }
+
+        /* Marker Pulse */
+        .pulse-marker {
+            background-color: var(--neon-red);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            box-shadow: 0 0 0 rgba(255, 0, 85, 0.4);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 0, 85, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 0, 85, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 0, 85, 0); }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #000;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--neon-blue);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex relative">
+    <div class="scanlines"></div>
+
+    <!-- Sidebar -->
+    <div class="w-96 h-full flex flex-col z-20 border-r border-[#00f3ff] bg-[rgba(10,10,15,0.9)] backdrop-blur-md">
+        <div class="p-6 border-b border-[#00f3ff] shadow-[0_0_15px_rgba(0,243,255,0.3)]">
+            <h1 class="text-2xl font-bold text-[#00f3ff] drop-shadow-[0_0_5px_#00f3ff]">
+                OVERWATCH
+            </h1>
+            <p class="text-xs text-gray-400 mt-1 cyber-text">SYSTEM STATUS: <span class="text-green-400 animate-pulse">ONLINE</span></p>
+        </div>
+
+        <div id="feed" class="flex-1 overflow-y-auto p-4 space-y-4">
+            <!-- Incidents will be injected here -->
+        </div>
+
+        <div class="p-4 border-t border-[#00f3ff] text-center text-xs text-gray-500 cyber-text">
+            ULTRON DEFENSE MATRIX v1.0
+        </div>
+    </div>
+
+    <!-- Map -->
+    <div id="map" class="flex-1 h-full z-10"></div>
+
+    <!-- Script -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        // 1. Initialize Map
+        const map = L.map('map').setView([13.7563, 100.5018], 12);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // 2. Socket Connection
+        const socket = io('http://localhost:3001');
+        const feed = document.getElementById('feed');
+
+        socket.on('connect', () => {
+            console.log('Connected to Neural Link');
+            addLog('SYSTEM', 'Neural Link Established', 'INFO');
+        });
+
+        // 3. Event Listener
+        socket.on('new_incident', (data) => {
+            console.log('New Incident:', data);
+            
+            // Add Marker
+            addMarker(data);
+            
+            // Add to Sidebar
+            addLog(data.type, data.text, data.priority);
+        });
+
+        function addMarker(data) {
+            // Random jitter for simulation purpose since we don't have real lat/lng in backend yet
+            const lat = 13.7563 + (Math.random() - 0.5) * 0.1;
+            const lng = 100.5018 + (Math.random() - 0.5) * 0.1;
+
+            let iconHtml = `<div style="background-color: #00f3ff; width: 12px; height: 12px; border-radius: 50%;"></div>`;
+            
+            if (data.priority === 'HIGH') {
+                iconHtml = `<div class="pulse-marker"></div>`;
+            }
+
+            const customIcon = L.divIcon({
+                html: iconHtml,
+                className: 'bg-transparent',
+                iconSize: [20, 20]
+            });
+
+            L.marker([lat, lng], { icon: customIcon })
+                .addTo(map)
+                .bindPopup(`
+                    <strong style="color:#000">${data.type}</strong><br>
+                    <span style="color:#333">${data.text}</span>
+                `)
+                .openPopup();
+        }
+
+        function addLog(type, text, priority) {
+            const item = document.createElement('div');
+            const borderColor = priority === 'HIGH' ? 'border-[#ff0055]' : 'border-[#00f3ff]';
+            const textColor = priority === 'HIGH' ? 'text-[#ff0055]' : 'text-[#00f3ff]';
+            
+            item.className = `bg-black/50 border-l-4 ${borderColor} p-3 mb-2 animate-in fade-in slide-in-from-left duration-500`;
+            item.innerHTML = `
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-xs font-bold ${textColor} cyber-text">${type}</span>
+                    <span class="text-[10px] bg-gray-800 px-1 rounded text-white">${priority}</span>
+                </div>
+                <div class="text-sm text-gray-300 font-mono">${text}</div>
+                <div class="text-[10px] text-gray-600 mt-1">${new Date().toLocaleTimeString()}</div>
+            `;
+            
+            feed.prepend(item);
+        }
+    </script>
+</body>
+</html>
